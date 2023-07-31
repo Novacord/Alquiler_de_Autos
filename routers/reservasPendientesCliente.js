@@ -1,24 +1,25 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
 import mysql from 'mysql2';
+import middlewareAlquiler from '../middlewares/middlewareAlquiler.js'
 
 dotenv.config();
-const appAutomovilesDisponibles = Router();
+const appReservasPendientesC = Router();
 
 const config = JSON.parse(process.env.MY_CONNECTION);
 
 let con = undefined;
 
-appAutomovilesDisponibles.use((req,res,next)=>{
+appReservasPendientesC.use((req,res,next)=>{
     con = mysql.createPool(config);
     next();
 })
 
-appAutomovilesDisponibles.get('/', (req, res)=>{
+appReservasPendientesC.get('/:id',middlewareAlquiler, (req, res)=>{
     con.query(
-        /*sql*/`SELECT * FROM Automovil
-                INNER JOIN Sucursal_Automovil
-                ON Automovil.ID_Automovil=Sucursal_Automovil.ID_Automovil;`,
+        /*sql*/`SELECT * FROM Reserva
+                INNER JOIN Cliente ON Reserva.ID_Cliente = Cliente.ID_Cliente
+                WHERE ID_Cliente = ?`,req.params.id,
         (err, data)=>{
             if(err){
                 res.status(500).send(err);
@@ -29,4 +30,4 @@ appAutomovilesDisponibles.get('/', (req, res)=>{
     )
 })
 
-export default appAutomovilesDisponibles
+export default appReservasPendientesC

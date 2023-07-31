@@ -29,4 +29,5 @@ appAlquiler.get('/:id',middlewareAlquiler,(req, res)=>{
     )
 })
 
+
 export default appAlquiler

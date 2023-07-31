@@ -3,22 +3,22 @@ import dotenv from 'dotenv';
 import mysql from 'mysql2';
 
 dotenv.config();
-const appAutomovilesDisponibles = Router();
+const appAutomovilSurcursal = Router();
 
 const config = JSON.parse(process.env.MY_CONNECTION);
 
 let con = undefined;
 
-appAutomovilesDisponibles.use((req,res,next)=>{
+appAutomovilSurcursal.use((req,res,next)=>{
     con = mysql.createPool(config);
     next();
 })
 
-appAutomovilesDisponibles.get('/', (req, res)=>{
+appAutomovilSurcursal.get('/', (req, res)=>{
     con.query(
-        /*sql*/`SELECT * FROM Automovil
-                INNER JOIN Sucursal_Automovil
-                ON Automovil.ID_Automovil=Sucursal_Automovil.ID_Automovil;`,
+        /*sql*/`SELECT Nombre,Cantidad_Disponible FROM Sucursal 
+                INNER JOIN Sucursal_Automovil  
+                ON Sucursal.ID_Sucursal=Sucursal_Automovil.ID_Sucursal;"`,
         (err, data)=>{
             if(err){
                 res.status(500).send(err);
@@ -29,4 +29,4 @@ appAutomovilesDisponibles.get('/', (req, res)=>{
     )
 })
 
-export default appAutomovilesDisponibles
+export default appAutomovilSurcursal
