@@ -1,32 +1,47 @@
-import {Router} from 'express';
+import { Router } from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
+import { con } from "../db/atlas.js";
 
 dotenv.config();
 const appAutomovilesDisponibles = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
+appAutomovilesDisponibles.get('/', async(req, res) => {
+    try {
+        const db = await con(); 
+        const Alquiler = db.collection("Alquiler"); 
 
-let con = undefined;
-
-appAutomovilesDisponibles.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-appAutomovilesDisponibles.get('/', (req, res)=>{
-    con.query(
-        /*sql*/`SELECT * FROM Automovil
-                INNER JOIN Sucursal_Automovil
-                ON Automovil.ID_Automovil=Sucursal_Automovil.ID_Automovil;`,
-        (err, data)=>{
-            if(err){
-                res.status(500).send(err);
-            }else{
-                res.status(200).send(data);
+        const result = await Alquiler.aggregate([
+            {
+              $match: { 
+                Estado: "Disponible", 
+              }
+            },
+            {
+              $lookup: {
+                from: "Automovil",
+                localField: "ID_Automovil",
+                foreignField: "id_",
+                as: "Automovil"
+              }
+            },
+            {
+              $unwind: '$Automovil'
+            },
+            {
+              $project: { 
+                _id: 0,
+                "Automovil._id": 0
+              }
             }
-        }
-    )
+        ]).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
+    }
 })
 
-export default appAutomovilesDisponibles
+export default appAutomovilesDisponibles;
+
+
+
