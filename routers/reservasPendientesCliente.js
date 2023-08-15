@@ -1,33 +1,42 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
+import { con } from "../db/atlas.js";
 import middlewareAlquiler from '../middlewares/middlewareAlquiler.js'
 
 dotenv.config();
 const appReservasPendientesC = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
-
-let con = undefined;
-
-appReservasPendientesC.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-appReservasPendientesC.get('/:id',middlewareAlquiler, (req, res)=>{
-    con.query(
-        /*sql*/`SELECT * FROM Reserva
-                INNER JOIN Cliente ON Reserva.ID_Cliente = Cliente.ID_Cliente
-                WHERE ID_Cliente = ?`,req.params.id,
-        (err, data)=>{
-            if(err){
-                res.status(500).send(err);
-            }else{
-                res.status(200).send(data);
+appReservasPendientesC.get('/:id',middlewareAlquiler, async(req, res)=>{
+    try {
+        const db = await con(); // Obtén la conexión a la base de datos
+        const Reserva = db.collection("Reserva"); // Define la colección
+        let id = parseInt(req.params.id)
+        const result = await Reserva.aggregate([
+            {
+              $lookup: {
+                from: "Cliente",
+                localField: "ID_Cliente",
+                foreignField: "id_",
+                as: "Cliente"
+              }
+            },
+            {
+              $project: { 
+                _id: 0,
+                "Cliente._id": 0
+              }
+            },
+            {
+              $match: { 
+                  ID_Cliente: id, 
+              }
             }
-        }
-    )
+          ]).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
+    }
 })
 
 export default appReservasPendientesC

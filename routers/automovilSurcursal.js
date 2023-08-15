@@ -1,32 +1,43 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
+import { con } from "../db/atlas.js";
 
 dotenv.config();
 const appAutomovilSurcursal = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
+appAutomovilSurcursal.get('/', async(req, res)=>{
+    try {
+        const db = await con(); // Obtén la conexión a la base de datos
+        const Sucursal = db.collection("Sucursal"); // Define la colección
 
-let con = undefined;
-
-appAutomovilSurcursal.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-appAutomovilSurcursal.get('/', (req, res)=>{
-    con.query(
-        /*sql*/`SELECT Nombre,Cantidad_Disponible FROM Sucursal 
-                INNER JOIN Sucursal_Automovil  
-                ON Sucursal.ID_Sucursal=Sucursal_Automovil.ID_Sucursal;"`,
-        (err, data)=>{
-            if(err){
-                res.status(500).send(err);
-            }else{
-                res.status(200).send(data);
+        const result = await Sucursal.aggregate([
+            {
+              $lookup: {
+                from: "Sucursal_Automovil",
+                localField: "id_",
+                foreignField: "id_",
+                as: "Sucursal_Automovil"
+              }
+            },
+            {
+              $project: { 
+                _id: 0,
+                "Sucursal_Automovil._id": 0
+              }
+            },
+            {
+              $group: {
+                _id:"$id_",
+                Nombre: { $first: "$Nombre"},
+                Cantidad: { $first:"$Sucursal_Automovil.Direccion"}
+              }
             }
-        }
-    )
+          ] ).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
+    }
 })
 
 export default appAutomovilSurcursal

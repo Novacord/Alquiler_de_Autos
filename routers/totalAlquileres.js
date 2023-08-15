@@ -1,30 +1,28 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
+import { con } from "../db/atlas.js";
 
 dotenv.config();
 const appTotalAlquileres = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
+appTotalAlquileres.get('/', async(req, res)=>{
+    try {
+        const db = await con(); // Obtén la conexión a la base de datos
+        const Alquiler = db.collection("Alquiler"); // Define la colección
 
-let con = undefined;
-
-appTotalAlquileres.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-appTotalAlquileres.get('/', (req, res)=>{
-    con.query(
-        /*sql*/`SELECT count(*) AS TotalAlquileres FROM Alquiler;`,
-        (err, data)=>{
-            if(err){
-                res.status(500).send(err);
-            }else{
-                res.status(200).send(data);
+        const result = await Alquiler.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 }
+                }
             }
-        }
-    )
+        ]).toArray()
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
+    }
 })
 
 export default appTotalAlquileres

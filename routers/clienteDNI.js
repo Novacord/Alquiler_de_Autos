@@ -1,32 +1,22 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
+import { con } from "../db/atlas.js";
 import middlewareAlquiler from '../middlewares/middlewareAlquiler.js'
 
 dotenv.config();
 const appClienteDNI = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
-
-let con = undefined;
-
-appClienteDNI.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-appClienteDNI.get('/:id',middlewareAlquiler,(req, res)=>{
-    con.query(
-        /*sql*/`SELECT * FROM Cliente
-                WHERE DNI=?`,req.params.id,
-        (err, data)=>{
-            if(err){
-                res.status(500).send(err);
-            }else{
-                res.status(200).send(data);
-            }
-        }
-    )
+appClienteDNI.get('/:id',middlewareAlquiler,async(req, res)=>{
+    try {
+        const db = await con(); // Obtén la conexión a la base de datos
+        const Cliente = db.collection("Cliente"); // Define la colección
+        let id = req.params.id;
+        const result = await Cliente.find({ DNI: id }).project({ _id: 0}).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
+    }
 })
 
 export default appClienteDNI

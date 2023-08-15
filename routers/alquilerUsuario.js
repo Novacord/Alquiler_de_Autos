@@ -1,32 +1,36 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
+import { con } from "../db/atlas.js";
 
 dotenv.config();
 const appAlquilerUsuario = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
-
-let con = undefined;
-
-appAlquilerUsuario.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-appAlquilerUsuario.get('/',(req, res)=>{
-    con.query(
-        /*sql*/`SELECT * FROM Cliente
-                INNER JOIN Alquiler 
-                ON Cliente.ID_Cliente=Alquiler.ID_Cliente`,
-        (err, data)=>{
-            if(err){
-                res.status(500).send(err);
-            }else{
-                res.status(200).send(data);
+appAlquilerUsuario.get('/',async(req, res)=>{
+    try {
+        const db = await con(); // Obtén la conexión a la base de datos
+        const Reserva = db.collection("Reserva"); // Define la colección
+        let id = parseInt(req.params.id)
+        const result = await Reserva.aggregate([
+            {
+              $lookup: {
+                from: "Alquiler",
+                localField: "id_",
+                foreignField: "ID_Cliente",
+                as: "Alquiler"
+              }
+            },
+            {
+              $project: { 
+                _id: 0,
+                "Alquiler._id": 0
+              }
             }
-        }
-    )
+          ]).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
+    }
 })
 
 

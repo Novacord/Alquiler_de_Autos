@@ -1,46 +1,21 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
+import { con } from "../db/atlas.js";
 
 dotenv.config();
 const empleadosRol = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
+empleadosRol.get('/', async(req, res)=>{
+    try {
+        const db = await con(); // Obtén la conexión a la base de datos
+        const Empleado = db.collection("Empleado"); // Define la colección
 
-let con = undefined;
-
-empleadosRol.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-empleadosRol.get('/', (req, res)=>{
-    if(req.query.rol == "Gerente"){
-        con.query(
-            /*sql*/`SELECT * FROM Empleado
-                    WHERE Cargo = "Gerente"`,
-            (err, data)=>{
-                if(err){
-                    res.status(500).send(err);
-                }else{
-                    res.status(200).send(data);
-                }
-            }
-        )
-    }else if(req.query.rol == "Asistente"){
-        con.query(
-            /*sql*/`SELECT * FROM Empleado
-                    WHERE Cargo = "Asistente"`,
-            (err, data)=>{
-                if(err){
-                    res.status(500).send(err);
-                }else{
-                    res.status(200).send(data);
-                }
-            }
-        )
+        const result = await Empleado.find({ $or: [ { Cargo: "Gerente" }, { Cargo: "Asistente" } ]}).project({ _id: 0 }).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
     }
-
 })
 
 export default empleadosRol

@@ -1,33 +1,22 @@
 import {Router} from 'express';
 import dotenv from 'dotenv';
-import mysql from 'mysql2';
-import middlewareAlquiler from '../middlewares/middlewareAlquiler.js'
+import { con } from "../db/atlas.js";
+
 
 dotenv.config();
 const appAlquilerFecha = Router();
 
-const config = JSON.parse(process.env.MY_CONNECTION);
-
-let con = undefined;
-
-appAlquilerFecha.use((req,res,next)=>{
-    con = mysql.createPool(config);
-    next();
-})
-
-
-appAlquilerFecha.get('/',(req, res)=>{
-    con.query(
-        /*sql*/`SELECT * FROM Alquiler
-                WHERE Fecha_Inicio="2023-07-05"`,req.query.id,
-        (err, data)=>{
-            if(err){
-                res.status(500).send(err);
-            }else{
-                res.status(200).send(data);
-            }
-        }
-    )
+appAlquilerFecha.get('/',async(req, res)=>{
+    try {
+        const db = await con(); // Obtén la conexión a la base de datos
+        const Alquiler = db.collection("Alquiler"); // Define la colección
+        let id = req.params.id;
+        const result = await Alquiler.find({ Fecha_Inicio: "2023-07-05" }).project({ _id: 0}).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error en el servidor");
+    }
 })
 
 export default appAlquilerFecha
